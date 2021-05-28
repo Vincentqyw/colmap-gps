@@ -1,5 +1,11 @@
-COLMAP
+COLMAP with GPS Position Prior
 ======
+
+## What's New?
+
+Adding **GPS position prior** to reconstruction, the final model is the same scale with the prior position.
+
+Note: You should firstly add pose (world to camera: qw qx qy qz tx ty tz) prior to database.
 
 About
 -----
