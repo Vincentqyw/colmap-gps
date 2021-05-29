@@ -51,6 +51,11 @@
 #include "util/alignment.h"
 #include "util/types.h"
 
+
+
+
+#define ENABLE_POSITION_PRIOR
+
 namespace colmap {
 
 struct PlyPoint;

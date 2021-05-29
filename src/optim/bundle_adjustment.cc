@@ -44,6 +44,10 @@
 #include "util/threading.h"
 #include "util/timer.h"
 
+#ifdef ENABLE_POSITION_PRIOR 
+  #include"util/numeric.h"
+#endif
+
 namespace colmap {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -245,6 +249,18 @@ void BundleAdjustmentConfig::RemoveConstantPoint(const point3D_t point3D_id) {
   constant_point3D_ids_.erase(point3D_id);
 }
 
+#ifdef ENABLE_POSITION_PRIOR 
+  void BundleAdjustmentConfig::SetFittingError(const double pose_center_robust_fitting_error)
+  {
+    pose_center_robust_fitting_error_ = pose_center_robust_fitting_error;
+  }
+  void BundleAdjustmentConfig::SetPriorPoseWeight(const Eigen::Vector3d prior_pose_weight)
+  {
+    prior_pose_weight_ = prior_pose_weight;
+  }
+
+#endif 
+
 ////////////////////////////////////////////////////////////////////////////////
 // BundleAdjuster
 ////////////////////////////////////////////////////////////////////////////////
@@ -360,6 +376,27 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
 
   const bool constant_pose =
       !options_.refine_extrinsics || config_.HasConstantPose(image_id);
+
+
+#ifdef ENABLE_POSITION_PRIOR
+    {
+      const Eigen::Vector3d pose_center_constraint = ProjectionCenterFromPose(image.QvecPrior(), image.TvecPrior());
+      
+      // TODO: need to auto adjust XYZ weight 
+      const Eigen::Vector3d xyz_weight = config_.GetPriorPoseWeight();
+      // Add the cost functor (distance from Pose prior to the SfM_Data Pose center)
+      ceres::CostFunction* cost_function = nullptr;
+      double pose_center_robust_fitting_error = config_.GetFittingError();
+      cost_function = PoseCenterConstraintCostFunction::Create(pose_center_constraint, xyz_weight);
+
+      problem_->AddResidualBlock(
+                              cost_function,
+                              new ceres::HuberLoss(
+                              Square(pose_center_robust_fitting_error)),
+                              qvec_data,
+                              tvec_data);
+    }
+#endif
 
   // Add residuals to bundle adjustment problem.
   size_t num_observations = 0;

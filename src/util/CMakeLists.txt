@@ -51,6 +51,8 @@ COLMAP_ADD_SOURCES(
     testing.h
     types.h
     version.h version.cc
+    numeric.h numeric.cpp
+    eigen_alias_definition.h
 )
 
 if(CUDA_ENABLED)
