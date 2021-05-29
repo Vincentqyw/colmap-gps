@@ -3,9 +3,11 @@ COLMAP with GPS Position Prior
 
 ## What's New?
 
-Adding **GPS position prior** to reconstruction(TODO) inspired by [openMVG](https://github.com/openMVG/openMVG), the final model is the same scale with the prior position.
+Adding **GPS position prior** to reconstruction inspired by [openMVG](https://github.com/openMVG/openMVG), the final model is the same scale with the prior position.
 
-Note: You should firstly add pose (world to camera: qw qx qy qz tx ty tz) prior to database.
+Note: You should firstly add pose (world to camera: qw qx qy qz tx ty tz) prior to database. 
+
+I defined a variable `ENABLE_POSITION_PRIOR` to enable using position prior in `src/base/reconstruction.h`, please check its references. If you don't use position prior, you can comment this definition. 
 
 About
 -----

@@ -298,23 +298,18 @@ struct PoseCenterConstraintCostFunction
   const
   {
     using Vec3T = Eigen::Matrix<T,3,1>;
-    // using Vec4T = Eigen::Matrix<T,4,1>;
 
     Vec3T pose_center; // twc_sfm
 
     // Rotate the point according the camera rotation
-    // TODO: check 
-
     // Inverse rotation as conjugate quaternion.
-    // const Vec4T normalized_qvec = NormalizeQuaternion(qvec.cast<double>()).cast<T>();
     const Eigen::Quaternion<T> qcw(qvec[0], -qvec[1], -qvec[2], -qvec[3]);
     Vec3T tcw(tvec[0],tvec[1],tvec[2]);
     pose_center = qcw * -tcw;
 
-
     // Eigen::Matrix<T, 3, 3, Eigen::RowMajor> R; //Rcw
     // ceres::QuaternionToRotation(qvec, R.data());
-    // Eigen::Matrix<T, 3, 3, Eigen::RowMajor> Rwc; //Rcw
+    // Eigen::Matrix<T, 3, 3, Eigen::RowMajor> Rwc;
     // Rwc = R.inverse();
     // T qwc[4];
     // ceres::RotationMatrixToQuaternion(Rwc.data(),qwc);
