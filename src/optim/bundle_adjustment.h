@@ -162,6 +162,10 @@ class BundleAdjustmentConfig {
   double GetFittingError(){return pose_center_robust_fitting_error_;};
   void SetPriorPoseWeight(const Eigen::Vector3d prior_pose_weight);
   Eigen::Vector3d GetPriorPoseWeight(){return prior_pose_weight_;};
+
+  // whether to use position prior
+  void SetUsagePriorStatus(const bool b_usable_prior);
+  bool GetUsagePriorStatus(){return b_usable_prior_;};
 #endif
 
  private:
@@ -174,6 +178,8 @@ class BundleAdjustmentConfig {
 #ifdef ENABLE_POSITION_PRIOR
   double pose_center_robust_fitting_error_;
   Eigen::Vector3d prior_pose_weight_;
+  // whether to use position prior
+  bool b_usable_prior_; 
 #endif
 
 };

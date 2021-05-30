@@ -688,7 +688,7 @@ bool IncrementalMapper::AdjustGlobalBundle(
 
 #ifdef ENABLE_POSITION_PRIOR
 
-  bool b_usable_prior = false;
+  bool b_usable_prior = options.b_usable_prior; 
   double pose_center_robust_fitting_error = 0.0;
 
   // - Estimate SIM3 transformation between SFM position and prior position
@@ -722,12 +722,11 @@ bool IncrementalMapper::AdjustGlobalBundle(
         return false;
       }
 
-
       // Robustly estimate transformation using RANSAC.
-      RANSACOptions options;
-      options.max_error = 10;
+      RANSACOptions ransac_options;
+      ransac_options.max_error = 10;
       LORANSAC<SimilarityTransformEstimator<3>, SimilarityTransformEstimator<3>>
-          ransac(options);
+          ransac(ransac_options);
       
       const auto report = ransac.Estimate(X_SfM, X_GPS);
       if (report.support.num_inliers < static_cast<size_t>(min_inlier_positions))
@@ -759,11 +758,11 @@ bool IncrementalMapper::AdjustGlobalBundle(
       std::sort(residual.data(), residual.data() + residual.size());
       pose_center_robust_fitting_error = residual(residual.size()/2);
     }
-
   }
   else
   {
     /* at least 3 registed images */
+    // nothing to do
   }
   
 #endif
@@ -773,6 +772,7 @@ bool IncrementalMapper::AdjustGlobalBundle(
 
   // Configure bundle adjustment.
   BundleAdjustmentConfig ba_config;
+  
   for (const image_t image_id : reg_image_ids) {
     ba_config.AddImage(image_id);
   }
@@ -794,15 +794,18 @@ bool IncrementalMapper::AdjustGlobalBundle(
     ba_config.SetConstantTvec(reg_image_ids[1], {0});
   }
 #endif
-
+  
 #ifdef ENABLE_POSITION_PRIOR
-
-  ba_config.SetFittingError(pose_center_robust_fitting_error);
-
-  // TODO: need to automatically adjust XYZ weight 
-  const Eigen::Vector3d xyz_weight = Eigen::Vector3d::Constant(1.0); 
-  ba_config.SetPriorPoseWeight(xyz_weight);
-
+  if(b_usable_prior)
+  {
+    ba_config.SetFittingError(pose_center_robust_fitting_error);
+    // TODO: need to automatically adjust XYZ weight 
+    const Eigen::Vector3d xyz_weight = Eigen::Vector3d::Constant(1.0); 
+    ba_config.SetPriorPoseWeight(xyz_weight);
+  }
+  // Set use prior status
+  ba_config.SetUsagePriorStatus(options.b_usable_prior);
+  
 #endif
 
 

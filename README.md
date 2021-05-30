@@ -7,7 +7,8 @@ Adding **GPS position prior** to reconstruction inspired by [openMVG](https://gi
 
 Note: You should firstly add pose (world to camera: qw qx qy qz tx ty tz) prior to database. 
 
-I defined a variable `ENABLE_POSITION_PRIOR` to enable using position prior in `src/base/reconstruction.h`, please check its references. If you don't use position prior, you can comment this definition. 
+I used [colmap](https://github.com/colmap/colmap) (commit: `866af28746d6500a97a241f9235e2730b2b90c29`) as baseline code and defined a variable `ENABLE_POSITION_PRIOR` to enable using position prior in `src/base/reconstruction.h`, please check its references. If you don't use position prior, you can comment this definition. 
+   
 
 About
 -----

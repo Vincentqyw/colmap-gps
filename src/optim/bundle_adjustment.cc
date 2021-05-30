@@ -258,6 +258,10 @@ void BundleAdjustmentConfig::RemoveConstantPoint(const point3D_t point3D_id) {
   {
     prior_pose_weight_ = prior_pose_weight;
   }
+  void BundleAdjustmentConfig::SetUsagePriorStatus(const bool b_usable_prior)
+  {
+    b_usable_prior_ = b_usable_prior;
+  }
 
 #endif 
 
@@ -379,6 +383,7 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
 
 
 #ifdef ENABLE_POSITION_PRIOR
+    if(config_.GetUsagePriorStatus())
     {
       const Eigen::Vector3d pose_center_constraint = ProjectionCenterFromPose(image.QvecPrior(), image.TvecPrior());
       

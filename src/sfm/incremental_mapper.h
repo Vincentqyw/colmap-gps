@@ -124,6 +124,12 @@ class IncrementalMapper {
     // Number of threads.
     int num_threads = -1;
 
+#ifdef ENABLE_POSITION_PRIOR
+    // whether to use position prior
+    bool b_usable_prior = true; 
+
+#endif
+
     // Method to find and select next best image to register.
     enum class ImageSelectionMethod {
       MAX_VISIBLE_POINTS_NUM,
