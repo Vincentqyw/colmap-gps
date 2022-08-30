@@ -7,7 +7,9 @@ Adding **GPS position prior** to reconstruction inspired by [openMVG](https://gi
 
 Note: You should firstly add pose (world to camera: qw qx qy qz tx ty tz) prior to database. 
 
-I used [colmap](https://github.com/colmap/colmap) (commit: `866af28746d6500a97a241f9235e2730b2b90c29`) as baseline code and defined a variable `ENABLE_POSITION_PRIOR` to enable using position prior in `src/base/reconstruction.h`, please check its references. If you don't use position prior, you can comment this definition. 
+Two steps to use the GPS position prior: 1) estimate sim3 transformation between un-scaled model (camera positions) and corresponding priors [CODE HERE](https://github.com/Vincentqyw/colmap-gps/blob/dev/src/sfm/incremental_mapper.cc#L689-L768); 2) add costs to the scaled positions and GPS postions [CODE HERE](https://github.com/Vincentqyw/colmap-gps/blob/dev/src/base/cost_functions.h#L272-L324). 
+
+I used [colmap](https://github.com/colmap/colmap) (commit: `866af28746d6500a97a241f9235e2730b2b90c29`) as baseline code and defined a variable `ENABLE_POSITION_PRIOR` to enable using position prior in `src/base/reconstruction.h`, please check its references. If you don't use position prior, you can comment this definition.
    
 
 About
