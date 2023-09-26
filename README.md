@@ -21,6 +21,15 @@ range of features for reconstruction of ordered and unordered image collections.
 The software is licensed under the new BSD license. If you use this project for
 your research, please cite:
 
+    @misc{vincentqin2022colmapgps,
+        author = {Vincent Qin},
+        title = {COLMAP with GPS Position Prior},
+        publisher = {GitHub},
+        journal = {GitHub repository},
+        howpublished = {\url{https://github.com/Vincentqyw/colmap-gps}}
+        year = {2022},
+    }
+
     @inproceedings{schoenberger2016sfm,
         author={Sch\"{o}nberger, Johannes Lutz and Frahm, Jan-Michael},
         title={Structure-from-Motion Revisited},
