@@ -385,7 +385,8 @@ void BundleAdjuster::AddImageToProblem(const image_t image_id,
 #ifdef ENABLE_POSITION_PRIOR
     if(config_.GetUsagePriorStatus())
     {
-      const Eigen::Vector3d pose_center_constraint = ProjectionCenterFromPose(image.QvecPrior(), image.TvecPrior());
+      // const Eigen::Vector3d pose_center_constraint = ProjectionCenterFromPose(image.QvecPrior(), image.TvecPrior());
+      const Eigen::Vector3d pose_center_constraint = ProjectionCenterFromPose(image.Qvec(), image.TvecPrior());
       
       // TODO: need to auto adjust XYZ weight 
       const Eigen::Vector3d xyz_weight = config_.GetPriorPoseWeight();

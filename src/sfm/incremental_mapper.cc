@@ -707,7 +707,8 @@ bool IncrementalMapper::AdjustGlobalBundle(
       if(!image.HasTvecPrior() || !image.HasTvecPrior())
         continue;
       Vec3 sfm_pose_center = image.ProjectionCenter();
-      Vec3 gps_pose_center = ProjectionCenterFromPose(image.QvecPrior(), image.TvecPrior());
+      // Vec3 gps_pose_center = ProjectionCenterFromPose(image.QvecPrior(), image.TvecPrior());
+      Vec3 gps_pose_center = ProjectionCenterFromPose(image.Qvec(), image.TvecPrior());
       X_SfM.push_back(sfm_pose_center);
       X_GPS.push_back(gps_pose_center);
     }
@@ -829,7 +830,8 @@ bool IncrementalMapper::AdjustGlobalBundle(
       if(!image.HasTvecPrior() || !image.HasTvecPrior())
         continue;
       Vec3 sfm_pose_center = image.ProjectionCenter();
-      Vec3 gps_pose_center = ProjectionCenterFromPose(image.QvecPrior(), image.TvecPrior());
+      // Vec3 gps_pose_center = ProjectionCenterFromPose(image.QvecPrior(), image.TvecPrior());
+      Vec3 gps_pose_center = ProjectionCenterFromPose(image.Qvec(), image.TvecPrior());
       X_SfM.push_back(sfm_pose_center);
       X_GPS.push_back(gps_pose_center);
     }
