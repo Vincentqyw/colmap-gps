@@ -37,7 +37,9 @@
 
 namespace colmap {
 
+#ifdef COLMAP_ONNX_ENABLED
 class ONNXModel;
+#endif
 
 struct SkyWaterSegmentationOptions {
   bool enabled = false;
@@ -74,7 +76,9 @@ class SkyWaterSegmenter {
   bool InitWithGPU(bool use_gpu);
 
   SkyWaterSegmentationOptions options_;
+#ifdef COLMAP_ONNX_ENABLED
   std::unique_ptr<ONNXModel> model_;
+#endif
   bool valid_ = false;
 };
 
