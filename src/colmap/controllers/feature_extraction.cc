@@ -30,6 +30,7 @@
 #include "colmap/controllers/feature_extraction.h"
 
 #include "colmap/feature/sift.h"
+#include "colmap/feature/skywater_segmenter.h"
 #include "colmap/scene/database.h"
 #include "colmap/util/cuda.h"
 #include "colmap/util/file.h"
@@ -380,6 +381,23 @@ class FeatureExtractorController : public Thread {
       }
     }
 
+#ifdef COLMAP_ONNX_ENABLED
+    if (extraction_options_.skywater &&
+        extraction_options_.skywater->enabled) {
+      try {
+        skywater_segmenter_ = std::make_unique<SkyWaterSegmenter>(
+            *extraction_options_.skywater);
+        if (!skywater_segmenter_->IsValid()) {
+          LOG(WARNING) << "SkyWaterSegmenter initialization failed. "
+                          "Continuing without segmentation.";
+          skywater_segmenter_.reset();
+        }
+      } catch (const std::exception& e) {
+        LOG(ERROR) << "Failed to create SkyWaterSegmenter: " << e.what();
+      }
+    }
+#endif
+
     const int num_threads =
         GetEffectiveNumThreads(extraction_options_.num_threads);
     THROW_CHECK_GT(num_threads, 0);
@@ -533,6 +551,17 @@ class FeatureExtractorController : public Thread {
         image_data.mask = std::make_unique<Bitmap>(std::move(mask));
       }
 
+#ifdef COLMAP_ONNX_ENABLED
+      if (skywater_segmenter_ &&
+          image_data.status == ImageReader::Status::SUCCESS &&
+          !image_data.mask) {
+        Bitmap seg_mask = skywater_segmenter_->GenerateMask(*image_data.bitmap);
+        if (!seg_mask.IsEmpty()) {
+          image_data.mask = std::make_unique<Bitmap>(std::move(seg_mask));
+        }
+      }
+#endif
+
       if (image_data.status != ImageReader::Status::SUCCESS) {
         // Release the memory, since it is not used afterwards.
         *image_data.bitmap = Bitmap();
@@ -576,6 +605,10 @@ class FeatureExtractorController : public Thread {
   std::unique_ptr<JobQueue<ImageData>> resizer_queue_;
   std::unique_ptr<JobQueue<ImageData>> extractor_queue_;
   std::unique_ptr<JobQueue<ImageData>> writer_queue_;
+
+#ifdef COLMAP_ONNX_ENABLED
+  std::unique_ptr<SkyWaterSegmenter> skywater_segmenter_;
+#endif
 };
 
 // Import features from text files. Each image must have a corresponding text

@@ -55,6 +55,7 @@ COLMAP_ADD_LIBRARY(
         onnx_matchers.h onnx_matchers.cc
         onnx_utils.h onnx_utils.cc
         sift.h sift.cc
+        skywater_segmenter.h skywater_segmenter.cc
         types.h types.cc
         utils.h utils.cc
     PUBLIC_LINK_LIBS

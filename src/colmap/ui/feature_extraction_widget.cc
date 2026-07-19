@@ -32,6 +32,7 @@
 #include "colmap/controllers/feature_extraction.h"
 #include "colmap/feature/aliked.h"
 #include "colmap/feature/sift.h"
+#include "colmap/feature/skywater_segmenter.h"
 #include "colmap/sensor/models.h"
 #include "colmap/ui/options_widget.h"
 #include "colmap/ui/thread_control_widget.h"
@@ -120,6 +121,16 @@ SIFTExtractionWidget::SIFTExtractionWidget(QWidget* parent,
   AddOptionDouble(
       &sift_options.dsp_max_scale, "sift.dsp_max_scale", 0.0, 1e7, 0.00001, 5);
   AddOptionInt(&sift_options.dsp_num_scales, "sift.dsp_num_scales", 1);
+
+#ifdef COLMAP_ONNX_ENABLED
+  SkyWaterSegmentationOptions& skywater_options =
+      *options->feature_extraction->skywater;
+  AddOptionBool(&skywater_options.enabled, "skywater_seg.enabled");
+  AddOptionText(&skywater_options.model_path,
+                    "skywater_seg.model_path");
+  AddOptionInt(&skywater_options.classes_to_mask,
+               "skywater_seg.classes_to_mask", 0, 15);
+#endif
 }
 
 void SIFTExtractionWidget::Run() {
@@ -186,6 +197,14 @@ AlikedExtractionWidget::AlikedExtractionWidget(QWidget* parent,
   AddOptionDouble(&aliked_options.min_score, "aliked.min_score", 0.0, 1.0);
   AddOptionText(&aliked_options.n16rot_model_path, "aliked.n16rot_model_path");
   AddOptionText(&aliked_options.n32_model_path, "aliked.n32_model_path");
+
+  SkyWaterSegmentationOptions& skywater_options =
+      *options->feature_extraction->skywater;
+  AddOptionBool(&skywater_options.enabled, "skywater_seg.enabled");
+  AddOptionText(&skywater_options.model_path,
+                    "skywater_seg.model_path");
+  AddOptionInt(&skywater_options.classes_to_mask,
+               "skywater_seg.classes_to_mask", 0, 15);
 }
 
 void AlikedExtractionWidget::Run() {

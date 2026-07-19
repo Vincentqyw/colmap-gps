@@ -43,6 +43,7 @@
 #include "colmap/estimators/two_view_geometry.h"
 #include "colmap/feature/aliked.h"
 #include "colmap/feature/sift.h"
+#include "colmap/feature/skywater_segmenter.h"
 #if defined(COLMAP_MVS_ENABLED)
 #include "colmap/mvs/advancing_front_meshing.h"
 #include "colmap/mvs/delaunay_meshing.h"
@@ -290,6 +291,15 @@ void OptionManager::AddFeatureExtractionOptions() {
                    &feature_extraction->aliked->n16rot_model_path);
   AddDefaultOption("AlikedExtraction.n32_model_path",
                    &feature_extraction->aliked->n32_model_path);
+
+#ifdef COLMAP_ONNX_ENABLED
+  AddDefaultOption("skywater_seg.enabled",
+                   &feature_extraction->skywater->enabled);
+  AddDefaultOption("skywater_seg.model_path",
+                   &feature_extraction->skywater->model_path);
+  AddDefaultOption("skywater_seg.classes_to_mask",
+                   &feature_extraction->skywater->classes_to_mask);
+#endif
 }
 
 void OptionManager::AddFeatureMatchingOptions() {

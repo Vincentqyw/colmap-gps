@@ -31,6 +31,7 @@
 
 #include "colmap/feature/aliked.h"
 #include "colmap/feature/sift.h"
+#include "colmap/feature/skywater_segmenter.h"
 #include "colmap/util/misc.h"
 
 namespace colmap {
@@ -46,7 +47,8 @@ void ThrowUnknownFeatureExtractorType(FeatureExtractorType type) {
 
 FeatureExtractionTypeOptions::FeatureExtractionTypeOptions()
     : sift(std::make_shared<SiftExtractionOptions>()),
-      aliked(std::make_shared<AlikedExtractionOptions>()) {}
+      aliked(std::make_shared<AlikedExtractionOptions>()),
+      skywater(std::make_shared<SkyWaterSegmentationOptions>()) {}
 
 FeatureExtractionTypeOptions::FeatureExtractionTypeOptions(
     const FeatureExtractionTypeOptions& other) {
@@ -55,6 +57,9 @@ FeatureExtractionTypeOptions::FeatureExtractionTypeOptions(
   }
   if (other.aliked) {
     aliked = std::make_shared<AlikedExtractionOptions>(*other.aliked);
+  }
+  if (other.skywater) {
+    skywater = std::make_shared<SkyWaterSegmentationOptions>(*other.skywater);
   }
 }
 
@@ -72,6 +77,11 @@ FeatureExtractionTypeOptions& FeatureExtractionTypeOptions::operator=(
     aliked = std::make_shared<AlikedExtractionOptions>(*other.aliked);
   } else {
     aliked.reset();
+  }
+  if (other.skywater) {
+    skywater = std::make_shared<SkyWaterSegmentationOptions>(*other.skywater);
+  } else {
+    skywater.reset();
   }
   return *this;
 }
