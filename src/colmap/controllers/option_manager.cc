@@ -295,8 +295,12 @@ void OptionManager::AddFeatureExtractionOptions() {
 #ifdef COLMAP_ONNX_ENABLED
   AddDefaultOption("skywater_seg.enabled",
                    &feature_extraction->skywater->enabled);
-  AddDefaultOption("skywater_seg.model_path",
-                   &feature_extraction->skywater->model_path);
+  AddDefaultOption("skywater_seg.use_fp16",
+                   &feature_extraction->skywater->use_fp16);
+  AddDefaultOption("skywater_seg.fp16_model_path",
+                   &feature_extraction->skywater->fp16_model_path);
+  AddDefaultOption("skywater_seg.fp32_model_path",
+                   &feature_extraction->skywater->fp32_model_path);
   AddDefaultOption("skywater_seg.classes_to_mask",
                    &feature_extraction->skywater->classes_to_mask);
 #endif

@@ -49,6 +49,7 @@ class ExtractionWidget : public OptionsWidget {
   virtual void Run() = 0;
 
  protected:
+  void AddSkyWaterOptions();
   OptionManager* options_;
   ThreadControlWidget* thread_control_widget_;
 };
@@ -87,6 +88,18 @@ ExtractionWidget::ExtractionWidget(QWidget* parent, OptionManager* options)
       options_(options),
       thread_control_widget_(new ThreadControlWidget(this)) {}
 
+void ExtractionWidget::AddSkyWaterOptions() {
+#ifdef COLMAP_ONNX_ENABLED
+  SkyWaterSegmentationOptions& opts =
+      *options_->feature_extraction->skywater;
+  AddOptionBool(&opts.enabled, "skywater_seg.enabled");
+  AddOptionBool(&opts.use_fp16, "skywater_seg.use_fp16");
+  AddOptionText(&opts.fp16_model_path, "skywater_seg.fp16_model_path");
+  AddOptionText(&opts.fp32_model_path, "skywater_seg.fp32_model_path");
+  AddOptionInt(&opts.classes_to_mask, "skywater_seg.classes_to_mask", 0, 15);
+#endif
+}
+
 SIFTExtractionWidget::SIFTExtractionWidget(QWidget* parent,
                                            OptionManager* options)
     : ExtractionWidget(parent, options) {
@@ -122,15 +135,7 @@ SIFTExtractionWidget::SIFTExtractionWidget(QWidget* parent,
       &sift_options.dsp_max_scale, "sift.dsp_max_scale", 0.0, 1e7, 0.00001, 5);
   AddOptionInt(&sift_options.dsp_num_scales, "sift.dsp_num_scales", 1);
 
-#ifdef COLMAP_ONNX_ENABLED
-  SkyWaterSegmentationOptions& skywater_options =
-      *options->feature_extraction->skywater;
-  AddOptionBool(&skywater_options.enabled, "skywater_seg.enabled");
-  AddOptionText(&skywater_options.model_path,
-                    "skywater_seg.model_path");
-  AddOptionInt(&skywater_options.classes_to_mask,
-               "skywater_seg.classes_to_mask", 0, 15);
-#endif
+  AddSkyWaterOptions();
 }
 
 void SIFTExtractionWidget::Run() {
@@ -198,13 +203,7 @@ AlikedExtractionWidget::AlikedExtractionWidget(QWidget* parent,
   AddOptionText(&aliked_options.n16rot_model_path, "aliked.n16rot_model_path");
   AddOptionText(&aliked_options.n32_model_path, "aliked.n32_model_path");
 
-  SkyWaterSegmentationOptions& skywater_options =
-      *options->feature_extraction->skywater;
-  AddOptionBool(&skywater_options.enabled, "skywater_seg.enabled");
-  AddOptionText(&skywater_options.model_path,
-                    "skywater_seg.model_path");
-  AddOptionInt(&skywater_options.classes_to_mask,
-               "skywater_seg.classes_to_mask", 0, 15);
+  AddSkyWaterOptions();
 }
 
 void AlikedExtractionWidget::Run() {

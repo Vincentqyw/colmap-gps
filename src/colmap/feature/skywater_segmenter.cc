@@ -35,9 +35,6 @@
 #include "colmap/util/misc.h"
 
 #include <algorithm>
-#include <array>
-#include <cstring>
-#include <filesystem>
 #include <memory>
 
 #ifdef COLMAP_ONNX_ENABLED
@@ -53,67 +50,13 @@ constexpr float kMean[3] = {0.485f, 0.456f, 0.406f};
 constexpr float kStd[3] = {0.229f, 0.224f, 0.225f};
 constexpr float kInv255 = 1.0f / 255.0f;
 
-// ─── FP16 → FP32 ──────────────────────────────────────────────────
+// Precomputed ImageNet normalization:  (v/255 - mean) / std
+constexpr float kNormScale[3] = {
+    kInv255 / kStd[0], kInv255 / kStd[1], kInv255 / kStd[2]};
+constexpr float kNormBias[3] = {
+    -kMean[0] / kStd[0], -kMean[1] / kStd[1], -kMean[2] / kStd[2]};
 
-float HalfToFloat(uint16_t h) {
-  const uint32_t sign = (h & 0x8000u) << 16;
-  const uint32_t exp_raw = (h >> 10) & 0x1Fu;
-  const uint32_t mant = h & 0x3FFu;
-  if (exp_raw == 0) {
-    if (mant == 0) {
-      uint32_t r = sign; float f; std::memcpy(&f, &r, sizeof(f)); return f;
-    }
-    uint32_t m = mant; int e = 1;
-    while ((m & 0x400u) == 0) { m <<= 1; --e; }
-    uint32_t bits = sign | ((127 - 15 + e) << 23) | ((m & 0x3FFu) << 13);
-    float f; std::memcpy(&f, &bits, sizeof(f)); return f;
-  }
-  if (exp_raw == 31) {
-    uint32_t bits = sign | 0x7F800000u | (mant << 13);
-    float f; std::memcpy(&f, &bits, sizeof(f)); return f;
-  }
-  uint32_t bits = sign | ((exp_raw - 15 + 127) << 23) | (mant << 13);
-  float f; std::memcpy(&f, &bits, sizeof(f)); return f;
-}
-
-const auto kHalfToFloatLUT = []() {
-  std::array<float, 65536> lut{};
-  for (uint32_t i = 0; i < 65536; ++i)
-    lut[i] = HalfToFloat(static_cast<uint16_t>(i));
-  return lut;
-}();
-
-// ─── Image resize ─────────────────────────────────────────────────
-
-void BilinearResize(const float* src, int src_h, int src_w,
-                    float* dst, int dst_h, int dst_w, int channels) {
-  const float scale_h = static_cast<float>(src_h) / dst_h;
-  const float scale_w = static_cast<float>(src_w) / dst_w;
-  const int src_stride = src_h * src_w;
-  for (int c = 0; c < channels; ++c) {
-    const float* ch_src = src + c * src_stride;
-    float* ch_dst = dst + c * dst_h * dst_w;
-    for (int dy = 0; dy < dst_h; ++dy) {
-      const float sy = dy * scale_h;
-      const int sy0 = static_cast<int>(sy);
-      const int sy1 = std::min(sy0 + 1, src_h - 1);
-      const float fy = sy - sy0;
-      for (int dx = 0; dx < dst_w; ++dx) {
-        const float sx = dx * scale_w;
-        const int sx0 = static_cast<int>(sx);
-        const int sx1 = std::min(sx0 + 1, src_w - 1);
-        const float fx = sx - sx0;
-        const float v00 = ch_src[sy0 * src_w + sx0];
-        const float v01 = ch_src[sy0 * src_w + sx1];
-        const float v10 = ch_src[sy1 * src_w + sx0];
-        const float v11 = ch_src[sy1 * src_w + sx1];
-        const float v0 = v00 + (v01 - v00) * fx;
-        const float v1 = v10 + (v11 - v10) * fx;
-        ch_dst[dy * dst_w + dx] = v0 + (v1 - v0) * fy;
-      }
-    }
-  }
-}
+// ─── Image resize ──────────────────────────────────────────────────
 
 void NearestResizeUint8(const uint8_t* src, int src_h, int src_w,
                         uint8_t* dst, int dst_h, int dst_w) {
@@ -130,34 +73,48 @@ void NearestResizeUint8(const uint8_t* src, int src_h, int src_w,
 
 // ─── Preprocessing ─────────────────────────────────────────────────
 
+// Fused: uint8 HWC → bilinear resize → float CHW → ImageNet normalize.
+// Reads directly from the uint8 source during interpolation — avoids a
+// full-resolution float CHW intermediate (saves ~88 MB for a 6K×4K image).
 std::vector<float> Preprocess(const Bitmap& bitmap) {
-  THROW_CHECK(bitmap.IsRGB());
   const int src_h = bitmap.Height();
   const int src_w = bitmap.Width();
   const int pitch = bitmap.Pitch();
-  const int num_pixels = src_h * src_w;
-
-  std::vector<float> src_chw(num_pixels * 3);
   const std::vector<uint8_t>& data = bitmap.RowMajorData();
-  for (int c = 0; c < 3; ++c)
-    for (int y = 0; y < src_h; ++y)
-      for (int x = 0; x < src_w; ++x)
-        src_chw[c * num_pixels + y * src_w + x] =
-            static_cast<float>(data[y * pitch + 3 * x + c]);
 
-  std::vector<float> resized(kInputH * kInputW * 3);
-  BilinearResize(
-      src_chw.data(), src_h, src_w, resized.data(), kInputH, kInputW, 3);
+  const float scale_h = static_cast<float>(src_h) / kInputH;
+  const float scale_w = static_cast<float>(src_w) / kInputW;
 
-  std::vector<float> nchw(1 * 3 * kInputH * kInputW);
+  std::vector<float> output(kInputH * kInputW * 3);
+
   for (int c = 0; c < 3; ++c) {
-    const float scale = kInv255 / kStd[c];
-    const float bias = -kMean[c] / kStd[c];
-    const int off = c * kInputH * kInputW;
-    for (int i = 0; i < kInputH * kInputW; ++i)
-      nchw[off + i] = resized[off + i] * scale + bias;
+    const float s = kNormScale[c];
+    const float b = kNormBias[c];
+    float* ch_dst = output.data() + c * kInputH * kInputW;
+    for (int dy = 0; dy < kInputH; ++dy) {
+      const float sy = dy * scale_h;
+      const int sy0 = static_cast<int>(sy);
+      const int sy1 = std::min(sy0 + 1, src_h - 1);
+      const float fy = sy - sy0;
+      for (int dx = 0; dx < kInputW; ++dx) {
+        const float sx = dx * scale_w;
+        const int sx0 = static_cast<int>(sx);
+        const int sx1 = std::min(sx0 + 1, src_w - 1);
+        const float fx = sx - sx0;
+
+        // Read uint8 pixels directly and interpolate.
+        const float v00 = data[sy0 * pitch + 3 * sx0 + c];
+        const float v01 = data[sy0 * pitch + 3 * sx1 + c];
+        const float v10 = data[sy1 * pitch + 3 * sx0 + c];
+        const float v11 = data[sy1 * pitch + 3 * sx1 + c];
+
+        const float v0 = v00 + (v01 - v00) * fx;
+        const float v1 = v10 + (v11 - v10) * fx;
+        ch_dst[dy * kInputW + dx] = (v0 + (v1 - v0) * fy) * s + b;
+      }
+    }
   }
-  return nchw;
+  return output;
 }
 
 // ─── Postprocessing ────────────────────────────────────────────────
@@ -186,6 +143,10 @@ std::vector<uint8_t> ArgmaxMask(const float* logits, int64_t h, int64_t w) {
 // Options
 // ═══════════════════════════════════════════════════════════════════
 
+const std::string& SkyWaterSegmentationOptions::ModelPath() const {
+  return use_fp16 ? fp16_model_path : fp32_model_path;
+}
+
 bool SkyWaterSegmentationOptions::Check() const {
   if (!enabled) return true;
   if (classes_to_mask < 0 || classes_to_mask > 15) {
@@ -205,7 +166,6 @@ SkyWaterSegmenter::SkyWaterSegmenter(
   THROW_CHECK(options_.Check());
   if (!options_.enabled) return;
 
-  // Try GPU first; fall back to CPU on failure.
   bool using_gpu = InitWithGPU(true);
   if (!using_gpu) {
     LOG(WARNING) << "SkyWaterSegmenter: GPU init failed, falling back to CPU";
@@ -216,27 +176,24 @@ SkyWaterSegmenter::SkyWaterSegmenter(
                   "failed, segmentation disabled";
     return;
   }
+  valid_ = true;
   LOG(INFO) << "SkyWaterSegmenter: model loaded successfully ("
             << (using_gpu ? "GPU/CUDA" : "CPU") << ")";
 }
 
 bool SkyWaterSegmenter::InitWithGPU(bool use_gpu) {
-  const std::string& input_path = options_.model_path.empty()
-      ? static_cast<const std::string&>(kDefaultSkyWaterSegmenterUri)
-      : options_.model_path;
-
   VLOG(1) << "SkyWaterSegmenter: trying to load model ("
-          << (use_gpu ? "GPU" : "CPU") << "): " << input_path;
+          << (use_gpu ? "GPU" : "CPU") << ")";
 
   try {
     model_ = std::make_unique<ONNXModel>(
-        input_path,
+        options_.ModelPath(),
         options_.num_threads,
         use_gpu,
         options_.gpu_index);
 
-    // Validate I/O. The model has fully dynamic shapes (batch, H, W), so use
-    // -1 as wildcard for all variable dimensions.
+    // Validate I/O shapes.  The model has fully dynamic dims (batch, H, W);
+    // use -1 as wildcard.
     THROW_CHECK_GE(model_->input_shapes().size(), 1);
     ThrowCheckONNXNode(model_->input_names()[0],
                        "input",
@@ -245,25 +202,21 @@ bool SkyWaterSegmenter::InitWithGPU(bool use_gpu) {
 
     THROW_CHECK_GE(model_->output_shapes().size(), 1);
     ThrowCheckONNXNode(model_->output_names()[0],
-                       "output",
+                       "output_fp32",
                        model_->output_shapes()[0],
                        {-1, kNumClasses, -1, -1});
 
     LOG(INFO) << "SkyWaterSegmenter: ONNX session created (GPU=" << use_gpu
               << ")";
-    valid_ = true;
     return true;
   } catch (const std::exception& e) {
     LOG(ERROR) << "SkyWaterSegmenter init failed"
                << " (GPU=" << use_gpu << "): " << e.what();
-    valid_ = false;
     return false;
   }
 }
 
 SkyWaterSegmenter::~SkyWaterSegmenter() = default;
-
-bool SkyWaterSegmenter::IsValid() const { return valid_; }
 
 Bitmap SkyWaterSegmenter::GenerateMask(const Bitmap& bitmap) {
   if (!valid_) {
@@ -271,20 +224,19 @@ Bitmap SkyWaterSegmenter::GenerateMask(const Bitmap& bitmap) {
     return Bitmap();
   }
 
-  // The segmentation model expects RGB.  If extraction runs with as_rgb=false
-  // (e.g. SIFT), convert the bitmap on-the-fly.
-  Bitmap rgb_bitmap(0, 0, false);
+  // Convert grayscale to RGB on-the-fly if needed (e.g. SIFT extraction).
   const Bitmap* input = &bitmap;
+  Bitmap rgb_temp;
   if (!bitmap.IsRGB()) {
-    rgb_bitmap = bitmap.CloneAsRGB();
-    input = &rgb_bitmap;
+    rgb_temp = bitmap.CloneAsRGB();
+    input = &rgb_temp;
   }
 
   const int orig_h = input->Height();
   const int orig_w = input->Width();
 
   try {
-    // Preprocess.
+    // Preprocess: RGB → normalized NCHW [1, 3, 384, 384].
     std::vector<float> nchw = Preprocess(*input);
 
     // Create input tensor.
@@ -300,7 +252,7 @@ Bitmap SkyWaterSegmenter::GenerateMask(const Bitmap& bitmap) {
         input_shape.data(),
         input_shape.size()));
 
-    // Run inference (ONNXModel::Run takes const ref to vector).
+    // Run inference.
     std::vector<Ort::Value> output_tensors = model_->Run(input_tensors);
     THROW_CHECK_GE(output_tensors.size(), 1);
 
@@ -310,37 +262,21 @@ Bitmap SkyWaterSegmenter::GenerateMask(const Bitmap& bitmap) {
     auto out_shape = out_info.GetShape();
     const int64_t out_h = (out_shape.size() >= 3) ? out_shape[2] : kInputH;
     const int64_t out_w = (out_shape.size() >= 4) ? out_shape[3] : kInputW;
-    const size_t out_count =
-        out_shape[0] * out_shape[1] * out_h * out_w;
+    // Argmax → class indices (model outputs FP32, like ALIKED).
+    const float* logits = out_val.GetTensorData<float>();
+    std::vector<uint8_t> class_mask = ArgmaxMask(logits, out_h, out_w);
 
-    // Convert FP16→FP32 if needed (detected on first run).
-    const auto elem_type = out_info.GetElementType();
-    std::vector<float> logits(out_count);
-    if (elem_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) {
-      const auto* fp16_data =
-          out_val.GetTensorData<Ort::Float16_t>();
-      for (size_t i = 0; i < out_count; ++i)
-        logits[i] = kHalfToFloatLUT[fp16_data[i].val];
-    } else {
-      const auto* fp32_data = out_val.GetTensorData<float>();
-      std::copy_n(fp32_data, out_count, logits.begin());
-    }
-
-    // Argmax → class indices → resize → binary mask.
-    std::vector<uint8_t> class_mask =
-        ArgmaxMask(logits.data(), out_h, out_w);
-
-    std::vector<uint8_t> mask_orig(orig_h * orig_w);
-    NearestResizeUint8(
-        class_mask.data(), out_h, out_w, mask_orig.data(), orig_h, orig_w);
-
+    // Resize class indices directly into the output bitmap and threshold
+    // in-place — avoids an intermediate mask_orig allocation.
     const int classes_to_mask = options_.classes_to_mask;
     Bitmap mask_bitmap(orig_w, orig_h, /*as_rgb=*/false);
     std::vector<uint8_t>& mask_data = mask_bitmap.RowMajorData();
-    for (size_t i = 0; i < mask_orig.size(); ++i) {
-      const uint8_t cls = mask_orig[i];
+    NearestResizeUint8(
+        class_mask.data(), out_h, out_w, mask_data.data(), orig_h, orig_w);
+    for (size_t i = 0; i < mask_data.size(); ++i) {
       mask_data[i] =
-          ((cls < 8) && (classes_to_mask & (1 << cls))) ? 0 : 255;
+          ((mask_data[i] < 8) && (classes_to_mask & (1 << mask_data[i])))
+              ? 0 : 255;
     }
 
     VLOG(3) << "SkyWaterSegmenter: generated mask " << orig_w << "x"
@@ -381,8 +317,6 @@ SkyWaterSegmenter::SkyWaterSegmenter(
 }
 
 SkyWaterSegmenter::~SkyWaterSegmenter() = default;
-
-bool SkyWaterSegmenter::IsValid() const { return false; }
 
 Bitmap SkyWaterSegmenter::GenerateMask(const Bitmap& /*bitmap*/) {
   LOG(ERROR) << "SkyWaterSegmentation requires ONNX support";

@@ -39,24 +39,25 @@ namespace colmap {
 
 class ONNXModel;
 
-// Sky/water/person segmentation using an ONNX model.
-//
-// The model performs 4-class segmentation:
-//   0 = background, 1 = sky, 2 = water, 3 = person
-//
-// Input:  RGB image, any size (internally resized to 384x384)
-// Output: Grayscale mask at original resolution, where:
-//   - 255 (white) = keep (background class)
-//   - 0   (black) = remove (selected classes: sky, water, person)
-
 struct SkyWaterSegmentationOptions {
   bool enabled = false;
-  std::string model_path = kDefaultSkyWaterSegmenterUri;
-  // Bitmask: 2=sky, 4=water, 8=person. Default: 6 = sky|water
-  int classes_to_mask = 6;
+
+  // Paths to the ONNX model (FP16 and FP32 variants).
+  // Defaults to HuggingFace auto-download URIs.
+  std::string fp16_model_path = kDefaultSkyWaterSegmenterFp16Uri;
+  std::string fp32_model_path = kDefaultSkyWaterSegmenterFp32Uri;
+
+  // Which precision variant to use.
+  bool use_fp16 = true;
+
+  // Bitmask: 2=sky, 4=water, 8=person. Default: 14 = all non-bg classes
+  int classes_to_mask = 14;
   int num_threads = -1;
   bool use_gpu = true;
   std::string gpu_index = "-1";
+
+  // Returns the active model path based on use_fp16.
+  const std::string& ModelPath() const;
 
   bool Check() const;
 };
@@ -67,14 +68,13 @@ class SkyWaterSegmenter {
   ~SkyWaterSegmenter();
 
   Bitmap GenerateMask(const Bitmap& bitmap);
-  bool IsValid() const;
+  bool IsValid() const { return valid_; }
 
  private:
   bool InitWithGPU(bool use_gpu);
 
   SkyWaterSegmentationOptions options_;
   std::unique_ptr<ONNXModel> model_;
-  bool output_is_fp16_ = false;
   bool valid_ = false;
 };
 

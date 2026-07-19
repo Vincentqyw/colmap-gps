@@ -59,21 +59,24 @@ inline const std::string kDefaultSiftLightGlueFeatureMatcherUri =
     "sift-lightglue.onnx;"
     "sift-lightglue.onnx;"
     "e0500228472b43f92b3d36881a09b3310d3b058b56187b246cc7b9ab6429096e";
-// Default URI for the sky-water-person segmentation model (4-class ONNX).
-// The model is downloaded from HuggingFace Hub: Realcat/skywater_seg
-// Set SkyWaterSegmentation.model_path to override with a local path.
-inline const std::string kDefaultSkyWaterSegmenterUri =
+inline const std::string kDefaultSkyWaterSegmenterFp16Uri =
     "https://huggingface.co/Realcat/skywater_seg/resolve/main/"
     "skywater_segformer_b2_fp16.onnx;"
     "skywater_segformer_b2_fp16.onnx;"
-    "a23d78377acb2b33f73f44cc582acc0351447f0235addb9935a85c932ac869ed";
+    "a4f518e6ace87b3ee473ea2578d00f0fb5f7bf8e4e6a3a49ae368c048c4e47c3";
+inline const std::string kDefaultSkyWaterSegmenterFp32Uri =
+    "https://huggingface.co/Realcat/skywater_seg/resolve/main/"
+    "skywater_segformer_b2_fp32.onnx;"
+    "skywater_segformer_b2_fp32.onnx;"
+    "e4e9a6927c2d910c3243f86e392b18da715b41c03e6e6f41672f8f6b8eaa71b5";
 #else
 inline const std::string kDefaultAlikedN16RotFeatureExtractorUri = "";
 inline const std::string kDefaultAlikedN32FeatureExtractorUri = "";
 inline const std::string kDefaultAlikedLightGlueFeatureMatcherUri = "";
 inline const std::string kDefaultBruteForceONNXMatcherUri = "";
 inline const std::string kDefaultSiftLightGlueFeatureMatcherUri = "";
-inline const std::string kDefaultSkyWaterSegmenterUri = "";
+inline const std::string kDefaultSkyWaterSegmenterFp16Uri = "";
+inline const std::string kDefaultSkyWaterSegmenterFp32Uri = "";
 #endif
 
 }  // namespace colmap
