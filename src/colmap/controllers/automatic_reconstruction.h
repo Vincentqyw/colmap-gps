@@ -44,9 +44,9 @@ class AutomaticReconstructionController : public Thread {
     // If empty, the vocabulary tree is used.
     std::string global_descriptor_model;
 
-    // Optional path to the global descriptor ONNX model. If empty, the default
-    // model is downloaded.
-    std::filesystem::path global_descriptor_path;
+    // Optional path or URI of the global descriptor ONNX model. If empty, the
+    // default model is downloaded.
+    std::string global_descriptor_path;
 
     // The type of input data used to choose optimal mapper settings.
     DataType data_type = DataType::INDIVIDUAL;

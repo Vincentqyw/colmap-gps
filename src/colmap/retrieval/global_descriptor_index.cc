@@ -8,7 +8,6 @@
 #include "colmap/util/misc.h"
 
 #include <fstream>
-#include <unordered_map>
 
 #include <faiss/IndexFlat.h>
 
@@ -82,6 +81,7 @@ void GlobalDescriptorIndex::Query(const QueryOptions& options,
   THROW_CHECK(prepared_)
       << "Index not prepared. Call Prepare() before Query().";
   THROW_CHECK_NOTNULL(image_scores);
+  THROW_CHECK_GT(options.max_num_images, 0);
   image_scores->clear();
 
   // Look up the query descriptor.
@@ -166,15 +166,16 @@ void GlobalDescriptorIndex::Read(const std::filesystem::path& path) {
   std::ifstream file(path, std::ios::binary);
   THROW_CHECK_FILE_OPEN(file, path);
 
-  // Header.
+  // Header. The values are only valid once the stream state is checked.
   const uint32_t magic = ReadBinaryLittleEndian<uint32_t>(&file);
-  THROW_CHECK_EQ(magic, kFileMagic)
-      << "Invalid global descriptor index file: bad magic number.";
   const uint32_t version = ReadBinaryLittleEndian<uint32_t>(&file);
-  THROW_CHECK_EQ(version, kFileVersion)
-      << "Unsupported global descriptor index file version: " << version;
   const uint32_t num_images = ReadBinaryLittleEndian<uint32_t>(&file);
   const uint32_t desc_dim = ReadBinaryLittleEndian<uint32_t>(&file);
+  THROW_CHECK(file) << "Truncated global descriptor index file: " << path;
+  THROW_CHECK_EQ(magic, kFileMagic)
+      << "Invalid global descriptor index file: bad magic number.";
+  THROW_CHECK_EQ(version, kFileVersion)
+      << "Unsupported global descriptor index file version: " << version;
 
   descriptor_dim_ = static_cast<int>(desc_dim);
   THROW_CHECK_GT(descriptor_dim_, 0);

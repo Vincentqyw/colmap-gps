@@ -1062,6 +1062,10 @@ TEST(RetrievalPairGenerator, GlobalDescriptor) {
   }
   EXPECT_EQ(num_cache_files, 1);
   EXPECT_EQ(generate_pairs(), pairs);
+
+  // A missing image directory is rejected before the model is loaded.
+  options.image_path = test_dir / "missing";
+  EXPECT_ANY_THROW(RetrievalPairGenerator generator(options, database));
 }
 
 #endif  // COLMAP_ONNX_ENABLED && COLMAP_DOWNLOAD_ENABLED

@@ -45,6 +45,7 @@ std::vector<image_t> QueryImageIds(
   std::vector<ImageScore> scores;
   index.Query(options, query_image_id, &scores);
   std::vector<image_t> image_ids;
+  image_ids.reserve(scores.size());
   for (const ImageScore& score : scores) {
     image_ids.push_back(score.image_id);
   }
@@ -115,6 +116,9 @@ TEST(GlobalDescriptorIndex, InvalidUsage) {
   EXPECT_ANY_THROW(index.Prepare());
   EXPECT_ANY_THROW(index.Add(30, CreateDescriptor(0.2)));
   EXPECT_ANY_THROW(index.Query({}, 30, &scores));
+  GlobalDescriptorIndex::QueryOptions options;
+  options.max_num_images = 0;
+  EXPECT_ANY_THROW(index.Query(options, 10, &scores));
 }
 
 TEST(GlobalDescriptorIndex, WriteRead) {
@@ -156,6 +160,11 @@ TEST(GlobalDescriptorIndex, ReadInvalidFile) {
   std::filesystem::resize_file(truncated_path,
                                std::filesystem::file_size(path) - 1);
   EXPECT_ANY_THROW(index.Read(truncated_path));
+
+  const std::filesystem::path header_path = test_dir / "header_only.bin";
+  std::filesystem::copy_file(path, header_path);
+  std::filesystem::resize_file(header_path, 8);
+  EXPECT_ANY_THROW(index.Read(header_path));
 
   const std::filesystem::path invalid_path = test_dir / "invalid.bin";
   {

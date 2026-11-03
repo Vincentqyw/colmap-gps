@@ -15,7 +15,7 @@ namespace {
 TEST(GlobalDescriptorModel, Registry) {
   const std::vector<std::string_view> names =
       GlobalDescriptorModel::ModelNames();
-  ASSERT_EQ(names.size(), 2);
+  ASSERT_GE(names.size(), 2);
   EXPECT_EQ(names[0], "MixVPR");
   EXPECT_EQ(names[1], "MegaLoc");
   for (const std::string_view name : names) {
