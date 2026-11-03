@@ -73,6 +73,7 @@ def test_panorama_reconstruction_uses_library_api(
         covisibility_min_shared_points=5,
         random_seed=7,
         use_gpu=False,
+        pano_matcher="sequential",
     )
     call: dict[str, Any] = {}
 
@@ -92,6 +93,8 @@ def test_panorama_reconstruction_uses_library_api(
     assert call["input_image_path"] == scene_info.image_path
     assert call["output_path"] == scene_info.workspace_path
     options = call["options"]
+    assert options.matcher.value == "sequential"
+    assert options.retrieval_options is None
     assert options.mapper.value == "global"
     assert options.render_type.value == "spherical"
     assert options.random_seed == 7

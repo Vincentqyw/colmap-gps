@@ -12,7 +12,7 @@
 #include "colmap/util/timer.h"
 
 #ifdef COLMAP_ONNX_ENABLED
-#include "colmap/feature/onnx_utils.h"
+#include "colmap/util/onnx.h"
 #endif
 
 #include <fstream>

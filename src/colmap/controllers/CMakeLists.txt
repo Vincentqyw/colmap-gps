@@ -50,7 +50,7 @@ if(CUDA_ENABLED OR HIP_ENABLED)
     endif()
 endif()
 if(ONNX_ENABLED)
-    target_link_libraries(colmap_controllers PRIVATE onnxruntime::onnxruntime)
+    target_link_libraries(colmap_controllers PRIVATE colmap_onnx_util)
 endif()
 
 COLMAP_ADD_TEST(
