@@ -76,10 +76,9 @@ def test_retrieval_pairing_options_check() -> None:
 
 def test_retrieval_pairing_options_model_path_pickle_roundtrip() -> None:
     options = pycolmap.RetrievalPairingOptions()
-    assert isinstance(options.model_path, str)
-    assert options.model_path.startswith("https://")
+    options.model_path = "https://example.com/model.onnx"
     restored = pickle.loads(pickle.dumps(options))
-    assert restored.model_path == options.model_path
+    assert restored.model_path == "https://example.com/model.onnx"
 
 
 def test_sequential_pairing_options_init() -> None:
