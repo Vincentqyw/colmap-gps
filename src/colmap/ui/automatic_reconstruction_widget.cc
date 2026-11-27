@@ -4,6 +4,7 @@
 
 #include "colmap/estimators/bundle_adjustment.h"
 #include "colmap/retrieval/global_descriptor_model.h"
+#include "colmap/retrieval/resources.h"
 #include "colmap/ui/main_window.h"
 
 namespace colmap {
@@ -184,7 +185,11 @@ void AutomaticReconstructionWidget::Run() {
         vocab_tree_row_
             ? vocab_tree_row_->findChild<QLineEdit*>("auto_vocab_tree_edit")
             : nullptr;
-    if (edit) options_.vocab_tree_path = edit->text().toStdString();
+    if (edit && !edit->text().isEmpty()) {
+      options_.vocab_tree_path = edit->text().toStdString();
+    } else {
+      options_.vocab_tree_path = kDefaultSiftVocabTreeUri;
+    }
   }
 #ifdef COLMAP_ONNX_ENABLED
   else if (retrieval_idx >= 2) {

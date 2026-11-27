@@ -1157,7 +1157,7 @@ std::vector<std::pair<image_t, image_t>> GlobalDescriptorPairGenerator::Next() {
                image_pairs_.size());
 
   LOG(INFO) << StringPrintf(
-      "Processing pairs [%d/%d]", pair_idx_ + 1, image_pairs_.size());
+      "Processing pairs [%zu/%zu]", pair_idx_ + 1, image_pairs_.size());
 
   std::vector<std::pair<image_t, image_t>> batch;
   batch.reserve(end_idx - pair_idx_);
@@ -1394,14 +1394,15 @@ void GlobalDescriptorPairGenerator::ComputeAndIndexDescriptors() {
       THROW_CHECK_EQ(output_shape[1], kDescriptorDim);
 
       for (int j = 0; j < current_batch_size; ++j) {
-        const float* desc = output_data + j * kDescriptorDim;
+        const float* desc =
+            output_data + static_cast<size_t>(j) * kDescriptorDim;
         std::vector<float> descriptor(desc, desc + kDescriptorDim);
         global_descriptor_index_.Add(batch_image_ids[j], descriptor);
       }
 
       total_processed += current_batch_size;
       LOG(INFO) << StringPrintf(
-          "Extracted descriptors [%d/%d]", total_processed, total_images);
+          "Extracted descriptors [%zu/%zu]", total_processed, total_images);
 
       batch_image_ids.clear();
       batch_data.clear();

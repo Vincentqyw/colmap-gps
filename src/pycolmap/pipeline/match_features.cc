@@ -67,6 +67,7 @@ void MatchRetrieval(
   if (pairing_options.database_path.empty()) {
     pairing_options.database_path = database_path;
   }
+  pairing_options.use_gpu = pairing_options.use_gpu && IsGPU(device);
   if (pairing_options.method == RetrievalMethod::GLOBAL_DESCRIPTOR) {
     THROW_CHECK_DIR_EXISTS(pairing_options.image_path);
   }
@@ -94,6 +95,7 @@ void MatchSequential(
     if (loop_options.database_path.empty()) {
       loop_options.database_path = database_path;
     }
+    loop_options.use_gpu = loop_options.use_gpu && IsGPU(device);
     if (loop_options.method == RetrievalMethod::GLOBAL_DESCRIPTOR) {
       THROW_CHECK_DIR_EXISTS(loop_options.image_path);
     }
