@@ -467,6 +467,12 @@ void SequentialMatchingTab::ReadOptions() {
   }
   loop_detection_type_cb_->setCurrentIndex(index);
   FeatureMatchingTab::ReadOptions();
+#ifdef COLMAP_ONNX_ENABLED
+  if (precision_cb_ != nullptr) {
+    const QSignalBlocker blocker(precision_cb_);
+    precision_cb_->clear();
+  }
+#endif
   UpdateLoopDetectionFields();
 }
 

@@ -19,38 +19,44 @@ namespace {
 // ---------------------------------------------------------------------------
 
 #ifdef COLMAP_ONNX_ENABLED
-const std::vector<GlobalDescriptorModel> kModels = [] {
-  // The default options correspond to MixVPR.
-  GlobalDescriptorModel mixvpr;
-  mixvpr.name = "MixVPR";
-  mixvpr.variants = {
-      {"fp16",
-       "https://huggingface.co/Realcat/image_retrieval_checkpoints/resolve/"
-       "main/mixvpr/onnx/mixvpr_fp16.onnx;mixvpr_fp16.onnx;"
-       "fee89548fdc8066d2464f00d5672363868459c8d6346c33bf2d2aea3b7e13c86"},
-      {"fp32",
-       "https://huggingface.co/Realcat/image_retrieval_checkpoints/resolve/"
-       "main/mixvpr/onnx/mixvpr_fp32.onnx;mixvpr_fp32.onnx;"
-       "1ede695b528f99b4d4ad3da940c9fe8d62f07254cbb0871205d669816ee97f47"}};
+const std::vector<GlobalDescriptorModel>& Models() {
+  static const std::vector<GlobalDescriptorModel> kModels = [] {
+    // The default options correspond to MixVPR.
+    GlobalDescriptorModel mixvpr;
+    mixvpr.name = "MixVPR";
+    mixvpr.variants = {
+        {"fp16",
+         "https://huggingface.co/Realcat/image_retrieval_checkpoints/resolve/"
+         "main/mixvpr/onnx/mixvpr_fp16.onnx;mixvpr_fp16.onnx;"
+         "fee89548fdc8066d2464f00d5672363868459c8d6346c33bf2d2aea3b7e13c86"},
+        {"fp32",
+         "https://huggingface.co/Realcat/image_retrieval_checkpoints/resolve/"
+         "main/mixvpr/onnx/mixvpr_fp32.onnx;mixvpr_fp32.onnx;"
+         "1ede695b528f99b4d4ad3da940c9fe8d62f07254cbb0871205d669816ee97f47"}};
 
-  GlobalDescriptorModel megaloc;
-  megaloc.name = "MegaLoc";
-  megaloc.input_width = 322;
-  megaloc.input_height = 322;
-  megaloc.expected_input_shape = {-1, 3, 322, 322};
-  megaloc.expected_output_shape = {-1, 8448};
-  megaloc.descriptor_dim = 8448;
-  // Weights are stored in fp16, computation is in fp32.
-  megaloc.variants = {
-      {"fp16",
-       "https://huggingface.co/gberton/MegaLoc/resolve/main/megaloc.onnx;"
-       "megaloc.onnx;"
-       "9304d7d2473b006d2664736b5c56135c8404ff351d4592cfd9dcb4d7e8f12355"}};
+    GlobalDescriptorModel megaloc;
+    megaloc.name = "MegaLoc";
+    megaloc.input_width = 322;
+    megaloc.input_height = 322;
+    megaloc.expected_input_shape = {-1, 3, 322, 322};
+    megaloc.expected_output_shape = {-1, 8448};
+    megaloc.descriptor_dim = 8448;
+    // Weights are stored in fp16, computation is in fp32.
+    megaloc.variants = {
+        {"fp16",
+         "https://huggingface.co/gberton/MegaLoc/resolve/main/megaloc.onnx;"
+         "megaloc.onnx;"
+         "9304d7d2473b006d2664736b5c56135c8404ff351d4592cfd9dcb4d7e8f12355"}};
 
-  return std::vector<GlobalDescriptorModel>{mixvpr, megaloc};
-}();
+    return std::vector<GlobalDescriptorModel>{mixvpr, megaloc};
+  }();
+  return kModels;
+}
 #else
-const std::vector<GlobalDescriptorModel> kModels = {};
+const std::vector<GlobalDescriptorModel>& Models() {
+  static const std::vector<GlobalDescriptorModel> kModels;
+  return kModels;
+}
 #endif
 
 // Build a lowercase-name→model lookup map for case-insensitive matching.
@@ -60,7 +66,7 @@ ModelMap() {
   static const std::unordered_map<std::string, const GlobalDescriptorModel*>
       map = [] {
         std::unordered_map<std::string, const GlobalDescriptorModel*> map;
-        for (const auto& m : kModels) {
+        for (const auto& m : Models()) {
           std::string key = m.name;
           StringToLower(&key);
           map[std::move(key)] = &m;
@@ -82,9 +88,10 @@ const GlobalDescriptorModel* GlobalDescriptorModel::GetModel(
 }
 
 std::vector<std::string_view> GlobalDescriptorModel::ModelNames() {
+  const auto& models = Models();
   std::vector<std::string_view> names;
-  names.reserve(kModels.size());
-  for (const auto& m : kModels) {
+  names.reserve(models.size());
+  for (const auto& m : models) {
     names.push_back(m.name);
   }
   return names;
